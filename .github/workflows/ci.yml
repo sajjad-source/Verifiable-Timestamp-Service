@@ -1,0 +1,49 @@
+# .github/workflows/ci.yml
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1) Check out your repository code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2) Install the Rust toolchain (stable)
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      # 3) Verify formatting (rustfmt)
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      # 4) Run Clippy and treat warnings as errors
+      - name: Run Clippy
+        run: cargo clippy -- -D warnings
+
+      # 5) Run all tests (unit, integration, doc)
+      - name: Run tests
+        run: cargo test --all
+
+      # 6) Generate documentation (just ensure it compiles)
+      - name: Build documentation
+        run: cargo doc --no-deps
+
+      # 7) Confirm README.md is present
+      - name: Verify README exists
+        run: test -f README.md
+
+      # 8) Build a release binary
+      - name: Build release
+        run: cargo build --release
