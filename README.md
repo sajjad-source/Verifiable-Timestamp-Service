@@ -61,6 +61,8 @@ This README covers our design choices, usage, and how to run tests/CI.
 - A modern **UNIX‑like OS** (macOS, Linux, WSL, etc.). (All code was tested on macOS and Ubuntu.)
 - **Internet access** only if you wish to fetch crates from crates.io. Otherwise, all core logic runs offline once dependencies are cached.
 
+**Note:** This repository includes the `ecdsa_lib` crate as a local dependency to ensure GitHub Actions CI can build and test the project without external dependencies.
+
 ---
 
 ## Key‐Storage Strategy & Design Decisions
@@ -101,6 +103,7 @@ lab4/                          # Repository root
 ├── .github/
 │   └── workflows/
 │       └── ci.yml             # GitHub Actions CI configuration
+├── ecdsa_lib/                 # Local copy of ecdsa_lib crate (for CI)
 ├── Cargo.toml                 # Crate manifest (lab4)
 ├── Cargo.lock                 # Cargo lockfile (auto-generated)
 ├── README.md                  # ← this file
