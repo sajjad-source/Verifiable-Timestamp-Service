@@ -6,7 +6,7 @@ use axum::{
     routing::{get, post},
 };
 use base64::{Engine as _, engine::general_purpose};
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use ecdsa_lib::KeyPair; // your library's KeyPair
 use k256::ecdsa::Signature; // the Signature type
 use serde::{Deserialize, Serialize};
@@ -19,7 +19,7 @@ use tracing::{error, info};
 struct KeyResponse {
     request: &'static str,
     #[serde(rename = "time-requested")]
-    time_requested: DateTime<Utc>,
+    time_requested: String,
     #[serde(rename = "public-key")]
     public_key: String,
 }
@@ -30,7 +30,7 @@ struct SignResponse {
     request: &'static str,
     message: String,
     #[serde(rename = "time-signed")]
-    time_signed: DateTime<Utc>,
+    time_signed: String,
     signature: String,
 }
 
@@ -93,10 +93,11 @@ pub async fn run_server_with_listener(
 async fn handle_get_key(public_key: Vec<u8>) -> impl IntoResponse {
     let now = Utc::now();
     let b64_pub = general_purpose::STANDARD.encode(&public_key);
+    let timestamp_str = now.to_rfc3339_opts(chrono::SecondsFormat::Micros, true);
 
     let resp = KeyResponse {
         request: "GET",
-        time_requested: now,
+        time_requested: timestamp_str,
         public_key: b64_pub.clone(),
     };
     info!(
@@ -155,7 +156,7 @@ async fn handle_post_sign(
 
     // Sign "message + timestamp":
     // Use the same format that will be serialized to JSON
-    let timestamp_str = now.format("%Y-%m-%dT%H:%M:%S%.6fZ").to_string();
+    let timestamp_str = now.to_rfc3339_opts(chrono::SecondsFormat::Micros, true);
     let data_to_sign = format!("{}{}", message, timestamp_str);
     let sig: Signature = keypair.sign(data_to_sign.as_bytes());
     let sig_b64 = general_purpose::STANDARD.encode(sig.to_vec());
@@ -163,7 +164,7 @@ async fn handle_post_sign(
     let resp = SignResponse {
         request: "POST",
         message: message.clone(),
-        time_signed: now,
+        time_signed: timestamp_str,
         signature: sig_b64.clone(),
     };
 
