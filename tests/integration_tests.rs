@@ -7,32 +7,44 @@ use reqwest;
 use serde_json;
 use std::fs;
 use std::net::SocketAddr;
+use std::sync::atomic::{AtomicU32, Ordering};
 use tokio::task;
 use tokio::time::{Duration, sleep};
 
+static TEST_COUNTER: AtomicU32 = AtomicU32::new(0);
+
 async fn spawn_server() -> SocketAddr {
+    // Generate unique filenames for this test instance
+    let test_id = TEST_COUNTER.fetch_add(1, Ordering::SeqCst);
+    let private_key_file = format!("test_private_key_{}.bin", test_id);
+    let public_key_file = format!("test_public_key_{}.bin", test_id);
+
     // 1) Generate a fresh KeyPair and write to .bin files
     let keypair = KeyPair::generate();
     keypair
-        .save_to_files("private_key.bin", "public_key.bin")
+        .save_to_files(&private_key_file, &public_key_file)
         .unwrap();
 
     // 2) Read raw bytes from those files
-    let priv_bytes = fs::read("private_key.bin").unwrap();
-    let pub_bytes = fs::read("public_key.bin").unwrap();
+    let priv_bytes = fs::read(&private_key_file).unwrap();
+    let pub_bytes = fs::read(&public_key_file).unwrap();
 
-    // 3) Bind to an ephemeral port (0)
+    // 3) Clean up the test files
+    let _ = fs::remove_file(&private_key_file);
+    let _ = fs::remove_file(&public_key_file);
+
+    // 4) Bind to an ephemeral port (0)
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
 
-    // 4) Spawn the server with those raw key bytes and the listener
+    // 5) Spawn the server with those raw key bytes and the listener
     task::spawn(async move {
         server::run_server_with_listener(priv_bytes, pub_bytes, listener)
             .await
             .unwrap_or_else(|e| eprintln!("Server error: {}", e));
     });
 
-    // 5) Give the server a moment to start up
+    // 6) Give the server a moment to start up
     sleep(Duration::from_millis(100)).await;
     addr
 }
